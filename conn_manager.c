@@ -179,15 +179,17 @@ void handle_get_connections(udp_message_t *resp)
 void handle_delete_conn(const udp_message_t *req, udp_message_t *resp)
 {
     const udp_delete_conn_request_t *udp_payload = (const udp_delete_conn_request_t *)req->payload;
-    resp->status = STATUS_SUCCESS;
-    const char *err = NULL;
     conn_t *found_conn = find_connection_by_name(udp_payload->name);
 
     if (found_conn == NULL) {
-        err = "could not find connection with that name";
+        const char *err = "could not find connection with that name";
         LOG(LOG_ERROR, "%s (name=%s)", err, udp_payload->name);
+        resp->status = STATUS_FAILURE;
+        set_error_msg(resp, err);
         return;
     }
+
+    resp->status = STATUS_SUCCESS;
 
     found_conn->client_port = 0;
     found_conn->line_port = 0;
