@@ -51,7 +51,16 @@ void log_write(log_level_t level,
     FILE *f = fopen(LOG_FILE, "a");
     if (f)
     {
-        fputs(log_line, f);
+        // Check if putting worked
+        if (fputs(log_line, f) == EOF)
+        {
+            fprintf(stderr, "[logger] failed to write to %s\n", LOG_FILE);
+        }
+
+        if (fclose(f) == EOF)
+        {
+            fprintf(stderr, "[logger] failed to close %s\n", LOG_FILE);
+        }
     }
     else
     {
