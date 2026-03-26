@@ -65,8 +65,13 @@ void notify_port_state(uint8_t port_id)
 
 void recalculate_oper_state(port_t *port) {
     port_state_t prev_state = port->operational_state;
-    port->operational_state = (port->admin_enabled || !port->fault_active) ? PORT_UP : PORT_DOWN;
-    
+
+    if (port->admin_enabled && !port->fault_active) {
+        port->operational_state = PORT_UP;
+    } else {
+        port->operational_state = PORT_DOWN;
+    }
+
     if (port->operational_state != prev_state) {
         LOG(LOG_INFO, "port_idx=%d oper_state changed: %s -> %s (admin=%s fault=%s)",
             port->id - 1,
@@ -162,6 +167,7 @@ bool dispatch(const udp_message_t *req, udp_message_t *resp)
         break;
     case MSG_SET_PORT:
         handle_set_port(req, resp);
+        break;
     case MSG_DELETE_PORT:
         handle_delete_port(req, resp);
         break;
