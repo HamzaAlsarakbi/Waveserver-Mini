@@ -2,6 +2,29 @@
 
 ## Carleton SCESoc x Ciena Coding Challenge 2026
 
+### Competitors
+
+* Bader El-Asadi ([GitHub](https://github.com/B2707))
+* Mohammad Steitieh ([GitHub](https://github.com/MohammadESteitieh))
+* Hamza Alsarakbi ([GitHub](https://github.com/HamzaAlsarakbi))
+
+### Demo
+
+![Demo](assets/demo.gif)
+
+### Result
+
+We won 2nd place! 🥈
+
+### Photos
+
+![Photo 1](assets/1.jpeg)
+
+![Photo 2](assets/2.jpeg)
+
+
+### Authors
+
 **Version:** 4.0 (FINAL)
 
 **Date:** March 17, 2026
