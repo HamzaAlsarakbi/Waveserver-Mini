@@ -11,6 +11,7 @@
 #define PORT_MANAGER_UDP (5001)
 #define CONN_MANAGER_UDP (5002)
 #define TRAFFIC_MGR_UDP (5003)
+#define PROTECTION_MGR_UDP (5004)
 
 #define MAX_UDP_MSG_SIZE (512)
 #define MAX_CONN_NAME_CHARACTER (32)
@@ -123,6 +124,9 @@ typedef enum
     MSG_GET_TRAFFIC_STATS, // CLI → Traffic Mgr : get traffic counters and if traffic up/down (request → reply)
     MSG_START_TRAFFIC,     // CLI → Traffic Mgr : start frame generation (request → reply)
     MSG_STOP_TRAFFIC,      // CLI → Traffic Mgr : stop frame generation (request → reply)
+
+    // Protection Manager messages
+    MSG_CREATE_PROTECTION_GROUP
 } msg_type_t;
 
 typedef enum

@@ -494,6 +494,29 @@ void cmd_stop_traffic(void)
     printf("[OK] Traffic generation stopped\n");
 }
 
+void cmd_set_protection_group(void)
+{
+    udp_message_t req = {0};
+    req.msg_type = MSG_CREATE_PROTECTION_GROUP;
+    req.status = STATUS_REQUEST;
+
+    udp_message_t resp = {0};
+    if (!send_and_receive(&req, &resp, PROTECTION_MGR_UDP))
+    {
+        printf("[ERROR] Failed to set protection group\n");
+        return;
+    }
+
+    if (resp.status == STATUS_SUCCESS)
+    {
+        printf("[OK] Protection group created: port-1 <-> port-2\n");
+    }
+    else
+    {
+        print_cmd_error(&resp, "set protection group", "port-1/port-2");
+    }
+}
+
 /**
  * help — Print all available commands.
  */
@@ -519,6 +542,7 @@ void cmd_help(void)
     printf("\n");
     printf("  start traffic [--client <id>] [--line <id>] Start traffic for specified ports (ports that are not specified will be randomized)\n");
     printf("  stop traffic                                Stop frame generation\n");
+    printf("  set protection group                        Create protection group port-1 <-> port-2\n");
     printf("\n");
     printf("  help                                        Show this help message\n");
     printf("  exit                                        Quit the CLI\n");
@@ -614,11 +638,21 @@ bool parse_and_execute(char *input)
     }
 
     // ---- set port <id> ----
-    if (strcmp(tokens[0], "set") == 0 && token_count >= 3 &&
-        strcmp(tokens[1], "port") == 0)
+    if (strcmp(tokens[0], "set") == 0 && token_count >= 3)
     {
-        uint8_t port_id = (uint8_t)atoi(tokens[2]);
-        cmd_set_port(port_id);
+        if (strcmp(tokens[1], "port") == 0)
+        {
+            uint8_t port_id = (uint8_t)atoi(tokens[2]);
+            cmd_set_port(port_id);
+        }
+        else if (strcmp(tokens[1], "protection") == 0 && strcmp(tokens[2], "group") == 0)
+        {
+            cmd_set_protection_group();
+        }
+        else
+        {
+            fprintf(stderr, "[ERROR] Unknown set command\n");
+        }
         return true;
     }
 
