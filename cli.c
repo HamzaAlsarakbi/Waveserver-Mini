@@ -425,28 +425,18 @@ void cmd_delete_port(uint8_t port_id)
 
 void cmd_inject_fault(uint8_t port_id)
 {
-    // TODO: F2 — Inject Fault — CLI Side (/8 pts)
-    // On success: print the OK message below.
-    // printf("[OK] Fault injected on Port-%d (%s)\n", port_id, port_id <= 2 ? "line" : "client");
-    // On failure: print the ERROR message below.
-    // printf("[ERROR] Failed to inject fault\n");
     if (exec_port_cmd(port_id, MSG_INJECT_FAULT, "inject-fault"))
-        printf("[OK] Port-%d disabled\n", port_id);
+        printf("[OK] Fault injected on port-%d\n", port_id);
     else
-        printf("[ERROR] Failed to delete port\n");
+        printf("[ERROR] Failed to inject fault\n");
 }
 
 void cmd_clear_fault(uint8_t port_id)
 {
-    // TODO: F2 — Clear Fault — CLI Side (/8 pts)
-    // On success: print the OK message below.
-    // printf("[OK] Fault cleared on Port-%d (%s)\n", port_id, port_id <= 2 ? "line" : "client");
-    // On failure: print the ERROR message below.
-    // printf("[ERROR] Failed to clear fault\n");
     if (exec_port_cmd(port_id, MSG_CLEAR_FAULT, "clear-fault"))
-        printf("[OK] Port-%d disabled\n", port_id);
+        printf("[OK] Fault cleared on port-%d\n", port_id);
     else
-        printf("[ERROR] Failed to delete port\n");
+        printf("[ERROR] Failed to clear fault\n");
 }
 
 /**
@@ -517,6 +507,68 @@ void cmd_set_protection_group(void)
     }
 }
 
+void cmd_delete_protection_group(void)
+{
+    udp_message_t req = {0};
+    req.msg_type = MSG_DELETE_PROTECTION_GROUP;
+    req.status = STATUS_REQUEST;
+
+    udp_message_t resp = {0};
+    if (!send_and_receive(&req, &resp, PROTECTION_MGR_UDP))
+    {
+        printf("[ERROR] Failed to delete protection group\n");
+        return;
+    }
+
+    if (resp.status == STATUS_SUCCESS)
+        printf("[OK] Protection group deleted\n");
+    else
+        print_cmd_error(&resp, "delete protection group", "port-1/port-2");
+}
+
+void cmd_show_protection_group(void)
+{
+    udp_message_t req = {0};
+    req.msg_type = MSG_SHOW_PROT_GROUP;
+    req.status = STATUS_REQUEST;
+
+    udp_message_t resp = {0};
+    if (!send_and_receive(&req, &resp, PROTECTION_MGR_UDP))
+    {
+        printf("[ERROR] Failed to get protection group status\n");
+        return;
+    }
+
+    const udp_prot_group_reply_t *reply = (const udp_prot_group_reply_t *)resp.payload;
+
+    printf("\n");
+    printf("  Protection Group: %s\n", reply->active ? "ACTIVE" : "INACTIVE");
+    printf("  Members:          port-1 <-> port-2\n");
+    printf("  Switchovers:      %u\n", reply->switchover_count);
+
+    if (reply->conn_count == 0)
+    {
+        printf("  (no connections tracked)\n");
+    }
+    else
+    {
+        printf("  %-12s  %-13s  %-12s  %s\n",
+               "Connection", "Original Line", "Current Line", "State");
+        printf("  %s  %s  %s  %s\n",
+               "──────────", "─────────────", "────────────", "──────────");
+        for (int i = 0; i < reply->conn_count; i++)
+        {
+            const prot_conn_status_t *c = &reply->conns[i];
+            printf("  %-12s  port-%-8d  port-%-7d  %s\n",
+                   c->name,
+                   c->original_line,
+                   c->current_line,
+                   c->switched ? "switched" : "normal");
+        }
+    }
+    printf("\n");
+}
+
 /**
  * help — Print all available commands.
  */
@@ -543,6 +595,8 @@ void cmd_help(void)
     printf("  start traffic [--client <id>] [--line <id>] Start traffic for specified ports (ports that are not specified will be randomized)\n");
     printf("  stop traffic                                Stop frame generation\n");
     printf("  set protection group                        Create protection group port-1 <-> port-2\n");
+    printf("  delete protection group                     Remove protection group (reverts switched connections)\n");
+    printf("  show protection group                       Show protection group status and per-connection state\n");
     printf("\n");
     printf("  help                                        Show this help message\n");
     printf("  exit                                        Quit the CLI\n");
@@ -630,6 +684,10 @@ bool parse_and_execute(char *input)
             }
             cmd_show_logs(level, service);
         }
+        else if (strcmp(tokens[1], "protection") == 0 && token_count >= 3 && strcmp(tokens[2], "group") == 0)
+        {
+            cmd_show_protection_group();
+        }
         else
         {
             fprintf(stderr, "[ERROR] Unknown show command: %s\n", tokens[1]);
@@ -668,6 +726,10 @@ bool parse_and_execute(char *input)
         else if (strcmp(tokens[1], "connection") == 0)
         {
             cmd_delete_connection(tokens[2]);
+        }
+        else if (strcmp(tokens[1], "protection") == 0 && token_count >= 3 && strcmp(tokens[2], "group") == 0)
+        {
+            cmd_delete_protection_group();
         }
         else
         {

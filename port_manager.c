@@ -148,6 +148,19 @@ void handle_delete_port(const udp_message_t *request, udp_message_t *response)
     LOG(LOG_INFO, "Port admin-disabled: port_idx=%d", port->id - 1);
     response->status = STATUS_SUCCESS;
 }
+void notify_fault_event(uint8_t port_id, uint8_t fault_active)
+{
+    udp_message_t msg = {0};
+    msg.msg_type = MSG_FAULT_NOTIFY;
+    msg.status   = STATUS_REQUEST;
+
+    udp_fault_notify_t *payload = (udp_fault_notify_t *)msg.payload;
+    payload->port_id      = port_id;
+    payload->fault_active = fault_active;
+
+    send_udp_message_one_way(notify_socket, &msg, PROTECTION_MGR_UDP);
+}
+
 void handle_inject_fault(const udp_message_t *request, udp_message_t *response)
 {
     port_t *port = get_port_from_request(request, response);
@@ -156,8 +169,10 @@ void handle_inject_fault(const udp_message_t *request, udp_message_t *response)
     port->fault_active = true;
     recalculate_oper_state(port);
     LOG(LOG_ERROR, "[Error] port_idx=%d SIGNAL LOSS", port->id - 1);
+    notify_fault_event(port->id, 1);
     response->status = STATUS_SUCCESS;
 }
+
 void handle_clear_fault(const udp_message_t *request, udp_message_t *response)
 {
     port_t *port = get_port_from_request(request, response);
@@ -166,6 +181,7 @@ void handle_clear_fault(const udp_message_t *request, udp_message_t *response)
     port->fault_active = false;
     recalculate_oper_state(port);
     LOG(LOG_INFO, "Injection Fault Cleared: port_idx=%d", port->id - 1);
+    notify_fault_event(port->id, 0);
     response->status = STATUS_SUCCESS;
 }
 void perform_health_check(void)
