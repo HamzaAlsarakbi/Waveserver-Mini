@@ -481,7 +481,17 @@ void cmd_stop_traffic(void)
     // Print the appropriate message based on the outcome:
     // printf("[ERROR] Failed to stop traffic\n");
     // printf("[OK] Traffic generation stopped\n");
-    printf("TODO: F4 — Stop Traffic CLI (/2 pts)\n");
+    udp_message_t req = {0};
+    req.msg_type = MSG_STOP_TRAFFIC;
+    req.status = STATUS_REQUEST;
+
+    udp_message_t resp = {0};
+    if (!send_and_receive(&req, &resp, TRAFFIC_MGR_UDP) || resp.status != STATUS_SUCCESS)
+    {
+        printf("[ERROR] Failed to stop traffic\n");
+        return;
+    }
+    printf("[OK] Traffic generation stopped\n");
 }
 
 /**

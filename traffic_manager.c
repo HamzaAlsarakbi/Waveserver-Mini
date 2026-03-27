@@ -134,6 +134,9 @@ void handle_start_traffic(const udp_message_t *req, udp_message_t *resp)
 void handle_stop_traffic(udp_message_t *resp)
 {
     // TODO: F4 — Stop Traffic Handler (/2 pts)
+    stats.running = false;
+    resp->status = STATUS_SUCCESS;
+    LOG(LOG_INFO, "Traffic stopped");
 }
 
 bool dispatch(const udp_message_t *req, udp_message_t *resp)
