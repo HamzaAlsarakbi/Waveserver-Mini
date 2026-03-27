@@ -246,18 +246,70 @@ void cmd_show_traffic_stats(void)
  */
 void cmd_show_logs(const char *level_filter, const char *service_filter)
 {
-    // TODO: F5 — Show Logs with Filtering (/3 pts)
-    //
-    // Read the shared log file (see LOG_FILE_PATH in common.h) and print its contents.
-    //
-    // Log lines follow this format:
-    //   [timestamp] [LEVEL] [service] [file:line] message
-    //
-    // Filtering rules:
-    //   - level_filter: if provided, only show lines whose level tag matches (i.e., "ERROR", "WARN", "DEBUG", "INFO"). 
-    //   - service_filter: if provided, only show lines from that service (i.e., "port_mgr", "conn_mgr", "traffic_mgr", "cli")
-    //   - Both filters can be active at the same time, and should be case insensitive
-    //   - If neither filter is set, print everything.
+    FILE *file = fopen(LOG_FILE_PATH, "r");
+    if (!file)
+    {
+        fprintf(stderr, "[ERROR] Could not open log file\n");
+        return;
+    }
+
+    char line[512];
+    while (fgets(line, sizeof(line), file))
+    {
+        // Parse log line format: [timestamp] [LEVEL] [service] [file:line] message
+        // Find bracket pairs for level (2nd) and service (3rd)
+        
+        char *bracket_pos = line;
+        char *level_start = NULL;
+        char *level_end = NULL;
+        char *service_start = NULL;
+        char *service_end = NULL;
+        
+        // Skip to 1st bracket pair (timestamp)
+        bracket_pos = strchr(bracket_pos, '[');
+        if (!bracket_pos) continue;
+        bracket_pos = strchr(bracket_pos + 1, ']');
+        if (!bracket_pos) continue;
+        
+        // 2nd bracket pair (LEVEL)
+        bracket_pos = strchr(bracket_pos + 1, '[');
+        if (!bracket_pos) continue;
+        level_start = bracket_pos + 1;
+        level_end = strchr(level_start, ']');
+        if (!level_end) continue;
+        
+        // 3rd bracket pair (service)
+        bracket_pos = strchr(level_end + 1, '[');
+        if (!bracket_pos) continue;
+        service_start = bracket_pos + 1;
+        service_end = strchr(service_start, ']');
+        if (!service_end) continue;
+        
+        // Extract level and service into temporary buffers
+        char level[32] = {0};
+        char service[64] = {0};
+        
+        if (level_end > level_start && level_end - level_start < (int)sizeof(level))
+            strncpy(level, level_start, level_end - level_start);
+        
+        if (service_end > service_start && service_end - service_start < (int)sizeof(service))
+            strncpy(service, service_start, service_end - service_start);
+        
+        // Apply filters (case-insensitive comparison)!
+        bool matches = true;
+        
+        if (level_filter && strcasecmp(level, level_filter) != 0)
+            matches = false;
+        
+        if (service_filter && strcasecmp(service, service_filter) != 0)
+            matches = false;
+        
+        if (matches)
+            printf("%s", line);
+    }
+    
+    // Close file when done (avoiding the B2 bug lol)
+    fclose(file);
 }
 
 /**
