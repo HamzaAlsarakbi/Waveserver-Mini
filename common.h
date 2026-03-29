@@ -126,7 +126,11 @@ typedef enum
     MSG_STOP_TRAFFIC,      // CLI → Traffic Mgr : stop frame generation (request → reply)
 
     // Protection Manager messages
-    MSG_CREATE_PROTECTION_GROUP
+    MSG_CREATE_PROTECTION_GROUP, // CLI → Protection Mgr : create protection group (request → reply)
+    MSG_DELETE_PROTECTION_GROUP, // CLI → Protection Mgr : delete protection group (request → reply)
+    MSG_FAULT_NOTIFY,            // Port Mgr → Protection Mgr : fault/clear event (fire-and-forget)
+    MSG_SWITCH_CONN_LINE,        // Protection Mgr → Conn Mgr : switch connection line port (request → reply)
+    MSG_SHOW_PROT_GROUP          // CLI → Protection Mgr : get protection group status (request → reply)
 } msg_type_t;
 
 typedef enum
@@ -212,6 +216,38 @@ typedef struct
     uint8_t client_port; // 0 = random (3-6)
     uint8_t line_port;   // 0 = random (1-2)
 } udp_start_traffic_request_t;
+
+// MSG_FAULT_NOTIFY (fire-and-forget, Port Mgr → Protection Mgr)
+typedef struct
+{
+    uint8_t port_id;
+    uint8_t fault_active; // 1 = fault injected, 0 = fault cleared
+} udp_fault_notify_t;
+
+// MSG_SWITCH_CONN_LINE request (Protection Mgr → Conn Mgr)
+typedef struct
+{
+    char conn_name[MAX_CONN_NAME_CHARACTER];
+    uint8_t new_line_port;
+} udp_switch_conn_line_t;
+
+// Per-connection entry in protection group status
+typedef struct
+{
+    char name[MAX_CONN_NAME_CHARACTER];
+    uint8_t original_line;
+    uint8_t current_line;
+    uint8_t switched; // bool: 1 = currently switched to protect port
+} prot_conn_status_t;
+
+// MSG_SHOW_PROT_GROUP reply (Protection Mgr → CLI)
+typedef struct
+{
+    uint8_t  active;
+    uint32_t switchover_count;
+    uint8_t  conn_count;
+    prot_conn_status_t conns[MAX_CONNS];
+} udp_prot_group_reply_t;
 
 ////// Shared functions /////
 int create_udp_server(uint16_t);

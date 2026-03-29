@@ -122,6 +122,21 @@ void handle_lookup_connection(const udp_message_t *req, udp_message_t *resp)
         }
     }
 
+    // Fallback: if no exact match, try matching by client port only.
+    // This keeps traffic flowing after a protection switchover changes the
+    // connection's active line port away from what the traffic generator expects.
+    if (conn == NULL)
+    {
+        for (int i = 0; i < MAX_CONNS; i++)
+        {
+            if (conns[i].client_port == payload->client_port && conns[i].client_port != 0)
+            {
+                conn = &conns[i];
+                break;
+            }
+        }
+    }
+
     if (conn == NULL)
     {
         LOG(LOG_WARN, "MSG_LOOKUP_CONNECTION: no connection for client port-%d and line port-%d",
@@ -140,6 +155,38 @@ void handle_lookup_connection(const udp_message_t *req, udp_message_t *resp)
     LOG(LOG_DEBUG,
         "MSG_LOOKUP_CONNECTION: client-%d → line-%d via %s operational_state=%s",
         payload->client_port, conn->line_port, conn->conn_name,
+        conn->operational_state == CONN_UP ? "UP" : "DOWN");
+}
+
+void handle_switch_conn_line(const udp_message_t *req, udp_message_t *resp)
+{
+    const udp_switch_conn_line_t *payload = (const udp_switch_conn_line_t *)req->payload;
+    conn_t *conn = find_connection_by_name(payload->conn_name);
+
+    if (conn == NULL)
+    {
+        set_error_msg(resp, "connection not found");
+        return;
+    }
+
+    uint8_t old_line = conn->line_port;
+    conn->line_port = payload->new_line_port;
+
+    // Re-evaluate oper state based on whether the new line port is UP
+    port_t new_line_info = {0};
+    if (get_port_info(payload->new_line_port, &new_line_info) &&
+        new_line_info.operational_state == PORT_UP)
+    {
+        conn->operational_state = CONN_UP;
+    }
+    else
+    {
+        conn->operational_state = CONN_DOWN;
+    }
+
+    resp->status = STATUS_SUCCESS;
+    LOG(LOG_INFO, "Connection '%s' switched: line-%d → line-%d, state=%s",
+        conn->conn_name, old_line, conn->line_port,
         conn->operational_state == CONN_UP ? "UP" : "DOWN");
 }
 
@@ -302,6 +349,10 @@ bool dispatch(const udp_message_t *req, udp_message_t *resp)
         break;
     case MSG_DELETE_CONN:
         handle_delete_conn(req, resp);
+        send_reply = true;
+        break;
+    case MSG_SWITCH_CONN_LINE:
+        handle_switch_conn_line(req, resp);
         send_reply = true;
         break;
     default:
